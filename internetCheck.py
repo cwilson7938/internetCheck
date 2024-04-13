@@ -2,11 +2,12 @@ import subprocess
 import time
 from datetime import datetime
 import speedtest
+from urllib.error import HTTPError
 
 # Define the IP addresses to ping
-check_period = 30       # how many seconds between ping checks
-print_success = 1      # print success msg if 1, just timestamp if 2, only "." if 3, and don't print if 0
-warning_response = 10   # if greater than this value, the warning message is printed
+check_period = 55       # how many seconds between ping checks
+print_success = 0      # print success msg if 1, just timestamp if 2, only "." if 3, and don't print if 0
+warning_response = 50   # if greater than this value, the warning message is printed
 ip_addresses = {
     'main_router': '192.168.10.1',
     'officecloset_AP': '192.168.10.2',
@@ -52,12 +53,21 @@ def speed_test():
             ping_speed = st.results.ping
 
             return download_speed, upload_speed, ping_speed
-        except (TypeError, AttributeError):
+        except (speedtest.ConfigRetrievalError, speedtest.SpeedtestException) as e:
+            print(f"Error: {e}. Retrying speed test...")
             # Retry after a short delay
             retries += 1
             time.sleep(2)
-                                                    
-    print("Error: Unable to perform speed test.")
+        except HTTPError as e:
+            if e.code == 403:
+                print("Error: HTTP Error 403 - Forbidden. Speed test skipped due to server access issue.")
+                return None, None, None
+            else:
+                print(f"Error: HTTP Error {e.code}. Retrying speed test...")
+                retries += 1
+                time.sleep(2)
+     
+    print("Error: Unable to perfom speed test.")
     return None, None, None
 
 def ping_and_speed_test(ip_addresses):
@@ -91,12 +101,12 @@ def ping_and_speed_test(ip_addresses):
 
         # Perform speed test once per hour
         
-        if time.localtime().tm_min == 42:    #run speed test at top of hour
+        if time.localtime().tm_min == 10:    #run speed test at 10 past the hour
             download_speed, upload_speed, ping_speed = speed_test()
             print(f"{formatted_time}          Speed Test Results: ")
-            print(f"{formatted_time}            Download Speed: {download_speed:.2f} Mbps")
-            print(f"{formatted_time}            Upload Speed: {upload_speed:.2f} Mbps")
-            print(f"{formatted_time}            Ping: {ping_speed:.2f} ms")
+            print(f"                                 Download Speed: {download_speed:.2f} Mbps")
+            print(f"                                 Upload Speed: {upload_speed:.2f} Mbps")
+            print(f"                                 Ping: {ping_speed:.2f} ms")
 
         # Wait for check_period seconds before pinging again
         time.sleep(check_period)
