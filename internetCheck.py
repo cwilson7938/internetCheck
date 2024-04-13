@@ -1,12 +1,12 @@
 import subprocess
 import time
 from datetime import datetime
-import sys
+import speedtest
 
 # Define the IP addresses to ping
 check_period = 30       # how many seconds between ping checks
-print_success = 0      # print success msg if 1, just timestamp if 2, only "." if 3, and don't print if 0
-warning_response = 100   # if greater than this value, the warning message is printed
+print_success = 1      # print success msg if 1, just timestamp if 2, only "." if 3, and don't print if 0
+warning_response = 10   # if greater than this value, the warning message is printed
 ip_addresses = {
     'main_router': '192.168.10.1',
     'officecloset_AP': '192.168.10.2',
@@ -30,7 +30,37 @@ def ping_host(ip):
     except subprocess.TimeoutExpired:
         return None
 
-def ping_devices(ip_addresses):
+def speed_test():
+    # Create a Speedtest object
+    st = speedtest.Speedtest()
+
+    # Retry if get_best_server() returns None or a non-subscriptable object
+    max_retries = 3
+    retries = 0
+    while retries < max_retries:
+        try:
+            # Get the best server based on ping
+            st.get_best_server()
+
+            # Perform the speed test
+            st.download()
+            st.upload()
+
+            # Get the results
+            download_speed = st.results.download / 1_000_000  # Convert to Mbps
+            upload_speed = st.results.upload / 1_000_000  # Convert to Mbps
+            ping_speed = st.results.ping
+
+            return download_speed, upload_speed, ping_speed
+        except (TypeError, AttributeError):
+            # Retry after a short delay
+            retries += 1
+            time.sleep(2)
+                                                    
+    print("Error: Unable to perform speed test.")
+    return None, None, None
+
+def ping_and_speed_test(ip_addresses):
     while True:
     # Initialize variables for average response time and unreachable devices
         avg_response_time = {}
@@ -59,8 +89,17 @@ def ping_devices(ip_addresses):
         if unreachable_devices:
             print(f"{formatted_time}  Error: The following devices are unreachable: {', '.join(unreachable_devices)}")
 
-        # Wait for 10 seconds before pinging again
+        # Perform speed test once per hour
+        
+        if time.localtime().tm_min == 42:    #run speed test at top of hour
+            download_speed, upload_speed, ping_speed = speed_test()
+            print(f"{formatted_time}          Speed Test Results: ")
+            print(f"{formatted_time}            Download Speed: {download_speed:.2f} Mbps")
+            print(f"{formatted_time}            Upload Speed: {upload_speed:.2f} Mbps")
+            print(f"{formatted_time}            Ping: {ping_speed:.2f} ms")
+
+        # Wait for check_period seconds before pinging again
         time.sleep(check_period)
 
-# Start pinging devices
-ping_devices(ip_addresses)
+# Start pinging and periodic speed test
+ping_and_speed_test(ip_addresses)
