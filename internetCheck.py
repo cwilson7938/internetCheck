@@ -6,12 +6,13 @@ from urllib.error import HTTPError
 
 # Define the IP addresses to ping
 check_period = 55       # how many seconds between ping checks
-print_success = 0      # print success msg if 1, just timestamp if 2, only "." if 3, and don't print if 0
+print_success = 0       # print success msg if 1, just timestamp if 2, only "." if 3, and don't print if 0
 warning_response = 50   # if greater than this value, the warning message is printed
+speedtest_minute = 5    # runs a speed test every hour at this minute (e.g. "5" means 5 minutes after the hour, xx:05)
 ip_addresses = {
     'main_router': '192.168.10.1',
-    'officecloset_AP': '192.168.10.2',
-    'maste_bedroom_AP': '192.168.10.3',
+    'office_closet_AP': '192.168.10.2',
+    'master_bedroom_AP': '192.168.10.3',
     'back_bedroom_AP': '192.168.10.4'
 }
 
@@ -101,7 +102,7 @@ def ping_and_speed_test(ip_addresses):
 
         # Perform speed test once per hour
         
-        if time.localtime().tm_min == 10:    #run speed test at 10 past the hour
+        if time.localtime().tm_min == speedtest_minute:    
             download_speed, upload_speed, ping_speed = speed_test()
             print(f"{formatted_time}          Speed Test Results: ")
             print(f"                                 Download Speed: {download_speed:.2f} Mbps")
